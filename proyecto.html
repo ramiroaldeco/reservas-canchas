@@ -84,6 +84,8 @@
           <option value="f7">F7</option>
         </select>
         <input type="date" id="fecha" min="2025-05-01">
+        <input type="text" id="nombre" placeholder="Tu nombre">
+        <input type="tel" id="telefono" placeholder="Teléfono">
         <button onclick="alert('Hacé clic en la tabla para reservar o cancelar horarios')">Reservar horario</button>
       </div>
 
@@ -107,11 +109,12 @@
   </div>
 
   <script>
+    const backendUrl = "https://reservas-canchas-0bq5.onrender.com";
     const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const tabla = document.querySelector("#tabla tbody");
 
     async function cargarReservas() {
-      const res = await fetch('http://localhost:3000/reservas');
+      const res = await fetch(`${backendUrl}/reservas`);
       return await res.json();
     }
 
@@ -124,7 +127,8 @@
         dias.forEach(dia => {
           const key = `${dia}-${hora}`;
           const reservado = reservas[key];
-          tr.innerHTML += `<td class="${reservado ? 'reservado' : 'disponible'}" onclick="toggleReserva(this, '${key}', ${reservado})">${reservado ? 'Reservado' : 'Disponible'}</td>`;
+          const texto = reservado ? `Reservado por ${reservado.nombre}` : 'Disponible';
+          tr.innerHTML += `<td class="${reservado ? 'reservado' : 'disponible'}" onclick="toggleReserva(this, '${key}', ${JSON.stringify(reservado)})">${texto}</td>`;
         });
         tabla.appendChild(tr);
       }
@@ -133,7 +137,7 @@
     async function toggleReserva(td, key, reservado) {
       const [dia, hora] = key.split("-");
       if (reservado) {
-        await fetch('http://localhost:3000/cancelar', {
+        await fetch(`${backendUrl}/cancelar`, {
           method: "POST",
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ dia, hora })
@@ -142,15 +146,20 @@
         td.className = "disponible";
         td.setAttribute("onclick", `toggleReserva(this, '${key}', false)`);
       } else {
-        const res = await fetch('http://localhost:3000/reservar', {
+        const nombre = document.getElementById("nombre").value.trim();
+        const telefono = document.getElementById("telefono").value.trim();
+        if (!nombre || !telefono) return alert("Completá tu nombre y teléfono antes de reservar.");
+
+        const res = await fetch(`${backendUrl}/reservar`, {
           method: "POST",
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dia, hora })
+          body: JSON.stringify({ dia, hora, nombre, telefono })
         });
+
         if (res.ok) {
-          td.textContent = "Reservado";
+          td.textContent = `Reservado por ${nombre}`;
           td.className = "reservado";
-          td.setAttribute("onclick", `toggleReserva(this, '${key}', true)`);
+          td.setAttribute("onclick", `toggleReserva(this, '${key}', ${JSON.stringify({ nombre, telefono })})`);
         } else {
           alert("Ese horario ya está reservado.");
         }
@@ -161,3 +170,4 @@
   </script>
 </body>
 </html>
+

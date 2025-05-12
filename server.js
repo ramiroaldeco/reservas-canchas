@@ -3,7 +3,7 @@ const cors = require('cors');
 const fs = require('fs');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -25,12 +25,12 @@ app.get('/reservas', (req, res) => {
 
 // Guardar una reserva
 app.post('/reservar', (req, res) => {
-  const { dia, hora } = req.body;
+  const { dia, hora, nombre, telefono } = req.body;
   const key = `${dia}-${hora}`;
   if (reservas[key]) {
     return res.status(400).json({ error: 'Ya está reservado' });
   }
-  reservas[key] = true;
+  reservas[key] = { nombre, telefono };
   guardar();
   res.sendStatus(200);
 });
