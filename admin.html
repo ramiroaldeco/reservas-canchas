@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel de Administrador</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f0f0f0;
+      padding: 20px;
+    }
+    h1 {
+      color: #00aa55;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: white;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+    th {
+      background-color: #00aa55;
+      color: white;
+    }
+    button {
+      background-color: #f44336;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .bloqueo-form {
+      margin-top: 30px;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    input[type="date"], input[type="password"] {
+      padding: 8px;
+      margin-right: 10px;
+    }
+    #contenido {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="login">
+    <h1>Acceso Administrador</h1>
+    <input type="password" id="clave" placeholder="Contraseña">
+    <button onclick="verificarClave()">Entrar</button>
+  </div>
+
+  <div id="contenido">
+    <h1>Panel de Administrador</h1>
+    <p>Listado de reservas activas:</p>
+
+    <table id="tabla">
+      <thead>
+        <tr>
+          <th>Día</th>
+          <th>Hora</th>
+          <th>Nombre</th>
+          <th>Teléfono</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Se llena desde JS -->
+      </tbody>
+    </table>
+
+    <div class="bloqueo-form">
+      <h2>Bloquear turnos por día</h2>
+      <input type="date" id="fechaBloqueo">
+      <button onclick="bloquearDia()">Bloquear día completo</button>
+    </div>
+  </div>
+
+  <script>
+    const backendUrl = "https://reservas-canchas-0bq5.onrender.com";
+    const claveCorrecta = "el20bosque25";
+
+    function verificarClave() {
+      const clave = document.getElementById("clave").value;
+      if (clave === claveCorrecta) {
+        document.getElementById("login").style.display = "none";
+        document.getElementById("contenido").style.display = "block";
+        cargarReservas();
+      } else {
+        alert("Contraseña incorrecta");
+      }
+    }
+
+    async function cargarReservas() {
+      const res = await fetch(`${backendUrl}/reservas`);
+      const datos = await res.json();
+      const tabla = document.querySelector("#tabla tbody");
+      tabla.innerHTML = "";
+
+      for (const clave in datos) {
+        const [dia, hora] = clave.split("-");
+        const { nombre, telefono } = datos[clave];
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${dia}</td>
+          <td>${hora}</td>
+          <td>${nombre}</td>
+          <td>${telefono}</td>
+          <td><button onclick="cancelar('${dia}', '${hora}')">Cancelar</button></td>
+        `;
+        tabla.appendChild(tr);
+      }
+    }
+
+    async function cancelar(dia, hora) {
+      const confirmar = confirm(`¿Seguro que querés cancelar ${dia} a las ${hora}?`);
+      if (!confirmar) return;
+
+      await fetch(`${backendUrl}/cancelar`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dia, hora })
+      });
+
+      cargarReservas();
+    }
+
+    async function bloquearDia() {
+      const fecha = new Date(document.getElementById("fechaBloqueo").value);
+      const diaSemana = fecha.toLocaleDateString("es-ES", { weekday: 'long' });
+      const dia = diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1);
+
+      for (let h = 18; h <= 23; h++) {
+        const hora = (h < 10 ? '0' + h : h) + ":00";
+        await fetch(`${backendUrl}/reservar`, {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dia, hora, nombre: "BLOQUEADO", telefono: "-" })
+        });
+      }
+
+      cargarReservas();
+    }
+  </script>
+</body>
+</html>
