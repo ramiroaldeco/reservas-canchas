@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reserva tu cancha</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f0f0f0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #00aa55;
+    }
+    .contenedor {
+      max-width: 1000px;
+      margin: auto;
+    }
+    .formulario {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+    input {
+      padding: 10px;
+      margin: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      width: 200px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #00aa55;
+      color: white;
+    }
+    .reservado {
+      background-color: #f44336;
+      color: white;
+    }
+    .disponible {
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    .deshabilitado {
+      background-color: #999;
+      color: #fff;
+      cursor: not-allowed;
+    }
+    h2 {
+      margin-top: 40px;
+      color: #00aa55;
+    }
+    .error {
+      color: red;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Reserva tu cancha al instante</h1>
+  <div class="contenedor">
+    <div class="formulario">
+      <input type="text" id="nombre" placeholder="Tu nombre" />
+      <input type="tel" id="telefono" placeholder="Tu teléfono" />
+    </div>
+
+    <div id="error" class="error"></div>
+
+    <h2>Cancha F5</h2>
+    <table id="tablaF5">
+      <thead>
+        <tr id="encabezadoF5"><th>Hora</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <h2>Cancha F7</h2>
+    <table id="tablaF7">
+      <thead>
+        <tr id="encabezadoF7"><th>Hora</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const backendUrl = "https://reservas-canchas-0bq5.onrender.com";
+    const hoy = new Date();
+    const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+    function generarEncabezados() {
+      for (let i = 0; i < 7; i++) {
+        const fecha = new Date(hoy);
+        fecha.setDate(hoy.getDate() + i);
+        if (fecha.getDay() === 0) continue; // saltea domingo
+
+        const nombreDia = diasSemana[fecha.getDay()];
+        const dia = fecha.getDate().toString().padStart(2, "0");
+        const mes = (fecha.getMonth() + 1).toString().padStart(2, "0");
+        const texto = `${nombreDia} ${dia}/${mes}`;
+
+        const thF5 = document.createElement("th");
+        thF5.textContent = texto;
+        document.getElementById("encabezadoF5").appendChild(thF5);
+
+        const thF7 = document.createElement("th");
+        thF7.textContent = texto;
+        document.getElementById("encabezadoF7").appendChild(thF7);
+      }
+    }
+
+    async function cargarTablas() {
+      try {
+        const reservas = await fetch(`${backendUrl}/reservas`).then(r => r.json());
+        console.log("✅ Reservas cargadas:", reservas);
+
+        ["F5", "F7"].forEach(cancha => {
+          const tabla = document.querySelector(`#tabla${cancha} tbody`);
+          tabla.innerHTML = "";
+
+          for (let h = 18; h <= 23; h++) {
+            const hora = `${h.toString().padStart(2, "0")}:00`;
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${hora}</td>`;
+
+            for (let i = 0; i < 7; i++) {
+              const fecha = new Date(hoy);
+              fecha.setDate(hoy.getDate() + i);
+              if (fecha.getDay() === 0) continue;
+
+              const nombreDia = diasSemana[fecha.getDay()];
+              const clave = `${cancha}-${nombreDia}-${hora}`;
+              const reservado = reservas[clave];
+
+              let clase = "disponible";
+              let texto = "Disponible";
+              let evento = `onclick="reservar('${cancha}','${nombreDia}','${hora}', this)"`;
+
+              const ahora = new Date();
+              if (
+                fecha.toDateString() === ahora.toDateString() &&
+                h <= ahora.getHours()
+              ) {
+                clase = "deshabilitado";
+                texto = "No disponible";
+                evento = "";
+              }
+
+              if (fecha < ahora) {
+                clase = "deshabilitado";
+                texto = "No disponible";
+                evento = "";
+              }
+
+              if (reservado) {
+                clase = "reservado";
+                texto = "Reservado";
+                evento = "";
+              }
+
+              tr.innerHTML += `<td class="${clase}" ${evento}>${texto}</td>`;
+            }
+
+            tabla.appendChild(tr);
+          }
+        });
+      } catch (err) {
+        console.error("❌ Error conectando al backend:", err);
+        document.getElementById("error").textContent = "No se pudo conectar con el servidor.";
+      }
+    }
+
+    async function reservar(cancha, dia, hora, celda) {
+      const nombre = document.getElementById("nombre").value.trim();
+      const telefono = document.getElementById("telefono").value.trim();
+
+      if (!nombre || !telefono) {
+        alert("Completá tu nombre y teléfono.");
+        return;
+      }
+
+      const confirmar = confirm(`¿Reservar ${cancha} el ${dia} a las ${hora}?`);
+      if (!confirmar) return;
+
+      const res = await fetch(`${backendUrl}/reservar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancha, dia, hora, nombre, telefono })
+      });
+
+      if (res.ok) {
+        celda.className = "reservado";
+        celda.innerText = "Reservado";
+        celda.onclick = null;
+
+        const mensaje = encodeURIComponent(`Reserva:\nCancha: ${cancha}\nDía: ${dia}\nHora: ${hora}\nNombre: ${nombre}\nTeléfono: ${telefono}`);
+        window.open(`https://wa.me/5493537614965?text=${mensaje}`, "_blank");
+      } else {
+        alert("Ese turno ya fue reservado.");
+      }
+    }
+
+    window.onload = () => {
+      generarEncabezados();
+      cargarTablas();
+
+      // refrescar automáticamente si se completa nombre o teléfono
+      document.getElementById("nombre").addEventListener("input", cargarTablas);
+      document.getElementById("telefono").addEventListener("input", cargarTablas);
+    };
+  </script>
+</body>
+</html>
+
