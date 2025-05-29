@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Prueba tabla</title>
+</head>
+<body>
+  <h1>Prueba Turnos</h1>
+  <table border="1" id="tabla">
+    <thead>
+      <tr>
+        <th>Hora</th>
+        <th>Martes</th>
+        <th>Miércoles</th>
+        <th>Jueves</th>
+        <th>Viernes</th>
+        <th>Sábado</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const tabla = document.querySelector("#tabla tbody");
+    for (let h = 18; h <= 23; h++) {
+      const hora = `${h.toString().padStart(2, "0")}:00`;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${hora}</td>`;
+      for (let i = 0; i < 5; i++) {
+        tr.innerHTML += `<td>Libre</td>`;
+      }
+      tabla.appendChild(tr);
+    }
+  </script>
+</body>
+</html>

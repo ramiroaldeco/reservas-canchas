@@ -1,4 +1,36 @@
 {
   "Jueves-21:00": true,
-  "Viernes-21:00": true
+  "Viernes-21:00": true,
+  "F5-Jueves-18:00": {
+    "nombre": "BLOQUEADO",
+    "telefono": "-"
+  },
+  "F5-Jueves-20:00": {
+    "nombre": "BLOQUEADO",
+    "telefono": "-"
+  },
+  "F5-Jueves-21:00": {
+    "nombre": "BLOQUEADO",
+    "telefono": "-"
+  },
+  "F5-Jueves-23:00": {
+    "nombre": "BLOQUEADO",
+    "telefono": "-"
+  },
+  "F7-Viernes-18:00": {
+    "nombre": "BLOQUEADO",
+    "telefono": "-"
+  },
+  "F7-Viernes-19:00": {
+    "nombre": "BLOQUEADO",
+    "telefono": "-"
+  },
+  "F7-Viernes-21:00": {
+    "nombre": "BLOQUEADO",
+    "telefono": "-"
+  },
+  "F7-Viernes-23:00": {
+    "nombre": "BLOQUEADO",
+    "telefono": "-"
+  }
 }

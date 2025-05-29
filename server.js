@@ -1,179 +1,65 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Reserva tu cancha</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background: url("images.jpg") no-repeat center center;
-      background-size: cover;
-      color: white;
-    }
-    .fondo {
-      background-color: rgba(0, 0, 0, 0.6);
-      min-height: 100vh;
-      padding: 50px;
-    }
-    .contenedor {
-      max-width: 800px;
-      margin: auto;
-      text-align: center;
-    }
-    h1 {
-      font-size: 3em;
-      color: #00dd55;
-    }
-    .busqueda {
-      background-color: white;
-      border-radius: 10px;
-      padding: 20px;
-      color: black;
-      display: flex;
-      gap: 10px;
-      justify-content: space-around;
-      margin-top: 30px;
-      flex-wrap: wrap;
-    }
-    input, select, button {
-      padding: 10px;
-      border-radius: 5px;
-      border: none;
-    }
-    button {
-      background-color: #00dd55;
-      color: white;
-      cursor: pointer;
-    }
-    table {
-      width: 100%;
-      margin-top: 40px;
-      border-collapse: collapse;
-      background-color: white;
-      color: black;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 10px;
-      text-align: center;
-    }
-    th {
-      background-color: #00dd55;
-      color: white;
-    }
-    .reservado {
-      background-color: #f44336;
-      color: white;
-    }
-    .disponible {
-      background-color: #4CAF50;
-      color: white;
-    }
-  </style>
-</head>
-<body>
-  <div class="fondo">
-    <div class="contenedor">
-      <h1>Reserva tu cancha al instante</h1>
-      <p>Horarios disponibles de lunes a sábado, de 18:00 a 00:00.</p>
+const express = require('express');
+const cors = require('cors');
+const fs = require('fs');
 
-      <div class="busqueda">
-        <select id="cancha" onchange="crearTabla()">
-          <option value="F5">F5</option>
-          <option value="F7">F7</option>
-        </select>
-        <input type="date" id="fecha" min="2025-05-01">
-        <input type="text" id="nombre" placeholder="Tu nombre">
-        <input type="tel" id="telefono" placeholder="Teléfono">
-        <button onclick="alert('Hacé clic en la tabla para reservar o cancelar horarios')">Ver horarios</button>
-      </div>
+const app = express();
+const PORT = 3000;
 
-      <table id="tabla">
-        <thead>
-          <tr>
-            <th>Hora</th>
-            <th>Lunes</th>
-            <th>Martes</th>
-            <th>Miércoles</th>
-            <th>Jueves</th>
-            <th>Viernes</th>
-            <th>Sábado</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Se llena con JavaScript -->
-        </tbody>
-      </table>
-    </div>
-  </div>
+app.use(cors());
+app.use(express.json());
 
-  <script>
-    const backendUrl = "https://reservas-canchas-0bq5.onrender.com";
-    const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const tabla = document.querySelector("#tabla tbody");
+let reservas = {};
+const archivo = 'reservas.json';
 
-    async function cargarReservas() {
-      const res = await fetch(`${backendUrl}/reservas`);
-      return await res.json();
-    }
+// Cargar reservas previas si el archivo existe
+if (fs.existsSync(archivo)) {
+  const data = fs.readFileSync(archivo);
+  try {
+    reservas = JSON.parse(data);
+  } catch (err) {
+    reservas = {};
+    console.log("⚠️ Archivo de reservas corrupto, se reinicia.");
+  }
+}
 
-    async function crearTabla() {
-      const reservas = await cargarReservas();
-      tabla.innerHTML = "";
-      const cancha = document.getElementById("cancha").value;
+// Obtener todas las reservas
+app.get('/reservas', (req, res) => {
+  res.json(reservas);
+});
 
-      for (let h = 18; h <= 23; h++) {
-        const tr = document.createElement("tr");
-        const hora = (h < 10 ? '0' + h : h) + ":00";
-        tr.innerHTML = `<td>${hora}</td>`;
-        dias.forEach(dia => {
-          const key = `${cancha}-${dia}-${hora}`;
-          const reservado = reservas[key];
-          const texto = reservado ? `Reservado por ${reservado.nombre}` : 'Disponible';
-          tr.innerHTML += `<td class="${reservado ? 'reservado' : 'disponible'}" onclick="toggleReserva(this, '${key}', ${JSON.stringify(reservado)})">${texto}</td>`;
-        });
-        tabla.appendChild(tr);
-      }
-    }
+// Guardar una reserva
+app.post('/reservar', (req, res) => {
+  const { cancha, dia, hora, nombre, telefono } = req.body;
 
-    async function toggleReserva(td, key, reservado) {
-      const partes = key.split("-");
-      const cancha = partes[0];
-      const dia = partes[1];
-      const hora = partes[2];
+  if (!cancha || !dia || !hora || !nombre || !telefono) {
+    return res.status(400).json({ error: 'Faltan datos para reservar' });
+  }
 
-      if (reservado) {
-        await fetch(`${backendUrl}/cancelar`, {
-          method: "POST",
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cancha, dia, hora })
-        });
-        td.textContent = "Disponible";
-        td.className = "disponible";
-        td.setAttribute("onclick", `toggleReserva(this, '${key}', false)`);
-      } else {
-        const nombre = document.getElementById("nombre").value.trim();
-        const telefono = document.getElementById("telefono").value.trim();
-        if (!nombre || !telefono) return alert("Completá tu nombre y teléfono antes de reservar.");
+  const key = `${cancha}-${dia}-${hora}`;
 
-        const res = await fetch(`${backendUrl}/reservar`, {
-          method: "POST",
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cancha, dia, hora, nombre, telefono })
-        });
+  if (reservas[key]) {
+    return res.status(400).json({ error: 'Ya está reservado' });
+  }
 
-        if (res.ok) {
-          td.textContent = `Reservado por ${nombre}`;
-          td.className = "reservado";
-          td.setAttribute("onclick", `toggleReserva(this, '${key}', ${JSON.stringify({ nombre, telefono })})`);
-        } else {
-          alert("Ese horario ya está reservado.");
-        }
-      }
-    }
+  reservas[key] = { nombre, telefono };
+  guardar();
+  res.sendStatus(200);
+});
 
-    crearTabla();
-  </script>
-</body>
-</html>
+// Cancelar una reserva
+app.post('/cancelar', (req, res) => {
+  const { cancha, dia, hora } = req.body;
+  const key = `${cancha}-${dia}-${hora}`;
+  delete reservas[key];
+  guardar();
+  res.sendStatus(200);
+});
+
+// Guardar en archivo JSON
+function guardar() {
+  fs.writeFileSync(archivo, JSON.stringify(reservas, null, 2));
+}
+
+app.listen(PORT, () => {
+  console.log(`✅ Servidor backend corriendo en http://localhost:${PORT}`);
+});
