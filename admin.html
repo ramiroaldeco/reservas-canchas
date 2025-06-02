@@ -15,7 +15,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 10px;
       background-color: white;
     }
     th, td {
@@ -28,12 +28,13 @@
       color: white;
     }
     button {
-      background-color: #f44336;
+      background-color: #00aa55;
       color: white;
       border: none;
       padding: 6px 10px;
       border-radius: 4px;
       cursor: pointer;
+      margin: 5px 0;
     }
     .bloqueo-form {
       margin-top: 30px;
@@ -59,12 +60,12 @@
 
   <div id="contenido">
     <h1>Panel de Administrador</h1>
-    <p>Listado de reservas activas:</p>
+    <button onclick="cargarReservas()">🔄 Actualizar reservas</button>
 
-    <table id="tabla">
+    <h2>Reservas F5</h2>
+    <table id="tablaF5">
       <thead>
         <tr>
-          <th>Cancha</th>
           <th>Día</th>
           <th>Hora</th>
           <th>Nombre</th>
@@ -72,9 +73,21 @@
           <th>Acción</th>
         </tr>
       </thead>
-      <tbody>
-        <!-- Se llena desde JS -->
-      </tbody>
+      <tbody></tbody>
+    </table>
+
+    <h2>Reservas F7</h2>
+    <table id="tablaF7">
+      <thead>
+        <tr>
+          <th>Día</th>
+          <th>Hora</th>
+          <th>Nombre</th>
+          <th>Teléfono</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
     </table>
 
     <div class="bloqueo-form">
@@ -107,22 +120,34 @@
     async function cargarReservas() {
       const res = await fetch(`${backendUrl}/reservas`);
       const datos = await res.json();
-      const tabla = document.querySelector("#tabla tbody");
-      tabla.innerHTML = "";
+
+      const tbodyF5 = document.querySelector("#tablaF5 tbody");
+      const tbodyF7 = document.querySelector("#tablaF7 tbody");
+      tbodyF5.innerHTML = "";
+      tbodyF7.innerHTML = "";
 
       for (const clave in datos) {
         const [cancha, dia, hora] = clave.split("-");
         const { nombre, telefono } = datos[clave];
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${cancha}</td>
+
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
           <td>${dia}</td>
           <td>${hora}</td>
           <td>${nombre}</td>
           <td>${telefono}</td>
-          <td><button onclick="cancelar('${cancha}', '${dia}', '${hora}')">Cancelar</button></td>
+          <td>
+            <button onclick="cancelar('${cancha}', '${dia}', '${hora}')">
+              ${nombre === "BLOQUEADO" ? "Desbloquear" : "Cancelar"}
+            </button>
+          </td>
         `;
-        tabla.appendChild(tr);
+
+        if (cancha === "F5") {
+          tbodyF5.appendChild(fila);
+        } else if (cancha === "F7") {
+          tbodyF7.appendChild(fila);
+        }
       }
     }
 
@@ -154,6 +179,7 @@
 
       for (let h = 18; h <= 23; h++) {
         const hora = `${h.toString().padStart(2, "0")}:00`;
+
         await fetch(`${backendUrl}/reservar`, {
           method: "POST",
           headers: { 'Content-Type': 'application/json' },
